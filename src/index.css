@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background:
+      radial-gradient(circle at top, rgba(231, 182, 101, 0.12), transparent 28%),
+      linear-gradient(180deg, #271d18 0%, #130f0d 55%, #090706 100%);
+    color: #f5efe7;
+  }
+
+  html,
+  body,
+  #root {
+    margin: 0;
+    min-height: 100%;
+  }
+
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, rgba(191, 133, 51, 0.16), transparent 22%),
+      radial-gradient(circle at bottom right, rgba(125, 82, 32, 0.12), transparent 28%),
+      linear-gradient(180deg, #231a16 0%, #120f0d 54%, #090706 100%);
+    overflow: hidden;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  button,
+  input,
+  select {
+    font: inherit;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply border border-white/10 bg-black/30 backdrop-blur-xl;
+  }
+
+  .panel-heading {
+    @apply text-[11px] uppercase tracking-[0.35em] text-amber-200/80;
+  }
+}
