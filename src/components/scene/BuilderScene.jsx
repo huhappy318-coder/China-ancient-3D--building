@@ -11,44 +11,28 @@ import PlacementGuides from './PlacementGuides';
 
 const WEATHER_SCENES = {
   sunny: {
-    background: '#8a694c',
-    fogColor: '#6f5745',
-    fogNear: 18,
-    fogFar: 42,
-    groundColor: '#4f3d2d',
-    accentColor: '#e7c58f',
-  },
-  rainMist: {
-    background: '#51606b',
-    fogColor: '#4f5b64',
-    fogNear: 10,
-    fogFar: 28,
-    groundColor: '#303a41',
-    accentColor: '#aeb7bf',
-  },
-  snow: {
-    background: '#a5b2ba',
-    fogColor: '#b2bdc6',
-    fogNear: 14,
-    fogFar: 34,
-    groundColor: '#d5dde2',
-    accentColor: '#f7fbff',
+    background: '#7b5b45',
+    fogColor: '#684d3d',
+    fogNear: 20,
+    fogFar: 46,
+    groundColor: '#443227',
+    accentColor: '#ddbe88',
   },
   dusk: {
-    background: '#5a3e32',
-    fogColor: '#50352f',
+    background: '#4f392e',
+    fogColor: '#3f2c24',
     fogNear: 16,
-    fogFar: 35,
-    groundColor: '#432b22',
-    accentColor: '#efb774',
+    fogFar: 36,
+    groundColor: '#37271f',
+    accentColor: '#e4b575',
   },
   night: {
-    background: '#13202f',
-    fogColor: '#101927',
+    background: '#121a24',
+    fogColor: '#10161f',
     fogNear: 12,
-    fogFar: 24,
-    groundColor: '#17212b',
-    accentColor: '#7fa4c8',
+    fogFar: 26,
+    groundColor: '#161d25',
+    accentColor: '#7f95aa',
   },
 };
 
@@ -72,26 +56,26 @@ export default function BuilderScene({
       <Canvas
         shadows
         dpr={[1, 1.6]}
-        gl={{ preserveDrawingBuffer: true }}
+        gl={{ preserveDrawingBuffer: true, antialias: true }}
         onPointerMissed={(event) => {
           if (!event.nativeEvent.shiftKey) {
             onClearSelection();
           }
         }}
       >
-        <PerspectiveCamera makeDefault position={[9, 6, 10]} fov={42} />
+        <PerspectiveCamera makeDefault position={[13.2, 5.2, 10.9]} fov={30} />
         <SceneAtmosphere weatherConfig={weatherConfig} />
         <CameraRig currentView={currentView} controlsRef={controlsRef} />
         <SceneLights currentWeather={currentWeather} currentLighting={currentLighting} />
 
-        <group position={[0, -0.15, 0]}>
+        <group position={[0, -0.18, 0]}>
           <GroundPlane
             groundColor={weatherConfig.groundColor}
             accentColor={weatherConfig.accentColor}
           />
-          <AxisGuide />
           {showBlueprintOverlay && (
             <>
+              <AxisGuide />
               <BlueprintOverlay blueprintMode={blueprintMode} />
               <PlacementGuides blueprintMode={blueprintMode} focusType={focusType} />
             </>
@@ -109,11 +93,11 @@ export default function BuilderScene({
         <OrbitControls
           ref={controlsRef}
           makeDefault
-          enablePan
+          enablePan={currentView === 'roam'}
           enableRotate={currentView !== 'top'}
-          minDistance={6}
-          maxDistance={28}
-          maxPolarAngle={Math.PI / 2.05}
+          minDistance={7}
+          maxDistance={26}
+          maxPolarAngle={Math.PI / 2.08}
         />
       </Canvas>
     </div>
@@ -145,21 +129,21 @@ function CameraRig({ currentView, controlsRef }) {
   const targetState = useMemo(() => {
     if (currentView === 'top') {
       return {
-        position: new THREE.Vector3(0, 17, 0.01),
-        target: new THREE.Vector3(0, 0.8, 0),
+        position: new THREE.Vector3(0, 18, 0.01),
+        target: new THREE.Vector3(0, 1, 0),
       };
     }
 
     if (currentView === 'roam') {
       return {
-        position: new THREE.Vector3(12, 4.5, 12),
-        target: new THREE.Vector3(0, 2.2, 0),
+        position: new THREE.Vector3(14.2, 6.1, 15.8),
+        target: new THREE.Vector3(0, 2.8, 0),
       };
     }
 
     return {
-      position: new THREE.Vector3(9, 6, 10),
-      target: new THREE.Vector3(0, 2.5, 0),
+      position: new THREE.Vector3(13.2, 5.2, 10.9),
+      target: new THREE.Vector3(0, 2.45, 0),
     };
   }, [currentView]);
 
@@ -174,8 +158,8 @@ function CameraRig({ currentView, controlsRef }) {
       return;
     }
 
-    camera.position.lerp(targetState.position, 0.1);
-    controls.target.lerp(targetState.target, 0.1);
+    camera.position.lerp(targetState.position, 0.08);
+    controls.target.lerp(targetState.target, 0.08);
     controls.update();
 
     if (

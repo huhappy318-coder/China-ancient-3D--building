@@ -5,7 +5,7 @@ export default function ViewControls({
   onChangeView,
 }) {
   return (
-    <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 flex-wrap items-center justify-center gap-3 px-4">
+    <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2 px-4">
       {viewOptions.map((option) => {
         const isActive =
           option.key === 'blueprint'
@@ -17,11 +17,11 @@ export default function ViewControls({
             key={option.key}
             type="button"
             onClick={() => onChangeView(option.key)}
-            className={`rounded-2xl px-4 py-3 text-sm transition ${
+            className={`rounded-full px-4 py-2 text-sm transition ${
               isActive
-                ? 'bg-amber-300 text-stone-950 shadow-amber'
-                : 'border border-white/10 bg-black/35 text-stone-200 backdrop-blur-xl hover:bg-white/10'
-            }`}
+                ? 'bg-amber-200 text-stone-950'
+                : 'border border-white/10 bg-black/22 text-stone-300 backdrop-blur-md hover:bg-white/8'
+            } ${option.key === 'roam' ? 'opacity-70' : ''}`}
           >
             {option.label}
           </button>

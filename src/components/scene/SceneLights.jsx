@@ -1,17 +1,15 @@
 const WEATHER_LIGHT = {
-  sunny: { ambient: 1.35, dir: 2.2, fill: 0.8, color: '#ffe1ae', fillColor: '#c7d9ff' },
-  rainMist: { ambient: 0.9, dir: 1.2, fill: 0.7, color: '#d9e2f2', fillColor: '#8ea4bf' },
-  snow: { ambient: 1.5, dir: 2.0, fill: 0.95, color: '#f4fbff', fillColor: '#c9d9e7' },
-  dusk: { ambient: 0.85, dir: 1.7, fill: 0.55, color: '#ffbd7d', fillColor: '#7769a3' },
-  night: { ambient: 0.35, dir: 0.55, fill: 0.85, color: '#88a8d8', fillColor: '#ffcb82' },
+  sunny: { ambient: 0.95, dir: 1.7, fill: 0.45, color: '#ffe1af', fillColor: '#cfc0a4' },
+  dusk: { ambient: 0.68, dir: 1.35, fill: 0.38, color: '#ffbe74', fillColor: '#8a6a53' },
+  night: { ambient: 0.24, dir: 0.45, fill: 0.55, color: '#89a9d3', fillColor: '#ffc07b' },
 };
 
 const LIGHTING_PRESET = {
-  dawn: { ambientFactor: 0.9, dirFactor: 1.0, fillFactor: 0.7, dirPos: [8, 6, 4], dirColor: '#ffd29e' },
-  noon: { ambientFactor: 1.1, dirFactor: 1.2, fillFactor: 0.75, dirPos: [4, 11, 3], dirColor: '#fff0cc' },
-  sunset: { ambientFactor: 0.85, dirFactor: 1.05, fillFactor: 0.65, dirPos: [-8, 5, 5], dirColor: '#ffb06b' },
-  lantern: { ambientFactor: 0.45, dirFactor: 0.55, fillFactor: 1.0, dirPos: [2, 5, 2], dirColor: '#f9d27c' },
-  soft: { ambientFactor: 1.0, dirFactor: 0.8, fillFactor: 0.9, dirPos: [5, 7, 6], dirColor: '#f2eadf' },
+  dawn: { ambientFactor: 0.92, dirFactor: 0.95, fillFactor: 0.82, dirPos: [9, 7, 5], dirColor: '#ffd3a2' },
+  sunset: { ambientFactor: 0.86, dirFactor: 1.08, fillFactor: 0.7, dirPos: [-11, 7, 8], dirColor: '#ffaf6a' },
+  soft: { ambientFactor: 1.0, dirFactor: 0.78, fillFactor: 0.92, dirPos: [6, 8, 7], dirColor: '#f1e0c6' },
+  noon: { ambientFactor: 1.04, dirFactor: 1.15, fillFactor: 0.72, dirPos: [4, 12, 3], dirColor: '#fff0cf' },
+  lantern: { ambientFactor: 0.38, dirFactor: 0.52, fillFactor: 0.92, dirPos: [2, 5, 3], dirColor: '#f8d07b' },
 };
 
 export default function SceneLights({ currentWeather, currentLighting }) {
@@ -21,6 +19,7 @@ export default function SceneLights({ currentWeather, currentLighting }) {
   return (
     <>
       <ambientLight intensity={weather.ambient * lighting.ambientFactor} />
+      <hemisphereLight intensity={0.22} color="#f9e7c9" groundColor="#1b1410" />
 
       <directionalLight
         castShadow
@@ -30,23 +29,23 @@ export default function SceneLights({ currentWeather, currentLighting }) {
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
         shadow-camera-near={0.5}
-        shadow-camera-far={40}
-        shadow-camera-left={-12}
-        shadow-camera-right={12}
-        shadow-camera-top={12}
-        shadow-camera-bottom={-12}
+        shadow-camera-far={42}
+        shadow-camera-left={-14}
+        shadow-camera-right={14}
+        shadow-camera-top={14}
+        shadow-camera-bottom={-14}
       />
 
       <directionalLight
         intensity={weather.fill * lighting.fillFactor}
-        position={[-6, 4, -7]}
+        position={[7, 4, -9]}
         color={weather.fillColor}
       />
 
       {currentLighting === 'lantern' && (
         <>
-          <pointLight position={[2.8, 2.5, 2]} intensity={18} color="#ffbf7d" distance={12} />
-          <pointLight position={[-2.8, 2.5, 2]} intensity={18} color="#ffbf7d" distance={12} />
+          <pointLight position={[2.8, 2.9, 2.2]} intensity={14} color="#ffbf7d" distance={12} />
+          <pointLight position={[-2.8, 2.9, 2.2]} intensity={14} color="#ffbf7d" distance={12} />
         </>
       )}
     </>

@@ -25,26 +25,24 @@ export default function ObjectListPanel({
   }, [sceneObjects]);
 
   return (
-    <div className="rounded-[28px] border border-white/10 bg-white/5 p-4">
+    <div className="panel-shell">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="panel-heading">对象列表</p>
-          <h3 className="mt-2 text-lg font-semibold text-white">场景图层</h3>
+          <h3 className="panel-title">场景图层</h3>
         </div>
-        <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-stone-300">
-          共 {sceneObjects.length} 个对象
-        </div>
+        <div className="panel-chip">共 {sceneObjects.length} 个对象</div>
       </div>
 
       {sceneObjects.length === 0 ? (
-        <div className="mt-4 rounded-2xl border border-dashed border-white/10 bg-black/15 px-4 py-6 text-sm text-stone-400">
-          场景里还没有构件，请从左侧构件库添加建筑构件，或切换到模板面板快速生成。
+        <div className="mt-4 rounded-[20px] border border-dashed border-white/10 bg-black/15 px-4 py-6 text-[13px] leading-6 text-stone-400">
+          场景里还没有构件，请从左侧构件库添加，或直接套用一个模板开始搭建。
         </div>
       ) : (
         <div className="mt-4 space-y-3">
           {groups.map(([groupLabel, objects]) => (
             <div key={groupLabel}>
-              <div className="mb-2 text-xs tracking-[0.22em] text-stone-400">{groupLabel}</div>
+              <div className="mb-2 text-[11px] tracking-[0.22em] text-stone-400">{groupLabel}</div>
               <div className="space-y-2">
                 {objects.map((object) => {
                   const isSelected = selectedObjectIds.includes(object.id);
@@ -61,16 +59,14 @@ export default function ObjectListPanel({
                       }}
                       role="button"
                       tabIndex={0}
-                      className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-3 py-3 text-left transition ${
+                      className={`flex w-full items-center justify-between gap-3 rounded-[18px] border px-3 py-3 text-left transition ${
                         isSelected
                           ? 'border-amber-300/40 bg-amber-200/10'
                           : 'border-white/8 bg-black/20 hover:border-white/15 hover:bg-white/10'
                       }`}
                     >
                       <div>
-                        <div className="text-sm font-medium text-white">
-                          {getObjectLabel(object.type)}
-                        </div>
+                        <div className="text-sm font-medium text-white">{getObjectLabel(object.type)}</div>
                         <div className="mt-1 text-xs text-stone-400">
                           {object.id.slice(0, 12)}
                           {!object.visible && <span className="ml-2 text-amber-200">已隐藏</span>}

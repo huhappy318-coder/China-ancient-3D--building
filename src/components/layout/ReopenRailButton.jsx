@@ -3,9 +3,9 @@ export default function ReopenRailButton({ onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="absolute left-5 top-5 rounded-2xl border border-white/10 bg-black/45 px-4 py-3 text-sm text-white shadow-glow backdrop-blur-xl transition hover:bg-white/10"
+      className="absolute left-5 top-5 rounded-full border border-white/8 bg-black/20 px-3 py-2 text-[11px] text-stone-300 backdrop-blur-md transition hover:bg-white/8 hover:text-white"
     >
-      展开边框
+      展开
     </button>
   );
 }

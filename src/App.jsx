@@ -2,18 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import LeftRail from './components/layout/LeftRail';
 import SidePanel from './components/layout/SidePanel';
 import TopOverlay from './components/layout/TopOverlay';
-import FloatingStats from './components/layout/FloatingStats';
 import ViewControls from './components/layout/ViewControls';
 import ReopenRailButton from './components/layout/ReopenRailButton';
 import ComponentsPanel from './components/panels/ComponentsPanel';
-import TemplatesPanel from './components/panels/TemplatesPanel';
 import BlueprintPanel from './components/panels/BlueprintPanel';
-import WeatherPanel from './components/panels/WeatherPanel';
 import LightingPanel from './components/panels/LightingPanel';
 import PropertiesPanel from './components/panels/PropertiesPanel';
 import BuilderScene from './components/scene/BuilderScene';
-import EvaluationBadge from './components/scene/EvaluationBadge';
-import { blueprintSteps } from './data/blueprintSteps';
 import {
   createSceneObject,
   cloneSceneObject,
@@ -23,7 +18,6 @@ import {
   updateObjectScale,
 } from './utils/sceneObjectFactory';
 import { loadBuilderState, saveBuilderState } from './utils/storage';
-import { formatNumber } from './utils/snap';
 import { createHistorySnapshot, popHistoryEntry, pushHistoryEntry } from './utils/history';
 import { createTemplateScene, getTemplateDefinitions } from './utils/templates';
 import { evaluateScene } from './utils/evaluation';
@@ -32,70 +26,47 @@ import { createArrayCopies } from './utils/arrayCopy';
 import { exportCanvasScreenshot, exportSceneJson } from './utils/exportScene';
 import { readJsonFile } from './utils/importScene';
 
-const WEATHER_OPTIONS = {
-  sunny: { label: '晴光' },
-  rainMist: { label: '雨雾' },
-  snow: { label: '雪景' },
-  dusk: { label: '黄昏' },
-  night: { label: '夜色' },
-};
-
-const LIGHTING_OPTIONS = {
-  dawn: { label: '晨光' },
-  noon: { label: '午照' },
-  sunset: { label: '夕照' },
-  lantern: { label: '夜灯' },
-  soft: { label: '柔光' },
-};
+const DEFAULT_TEMPLATE_KEY = 'hall';
 
 const VIEW_OPTIONS = [
   { key: 'top', label: '俯视' },
   { key: 'perspective', label: '透视' },
   { key: 'blueprint', label: '图纸叠加' },
-  { key: 'roam', label: '自由漫游' },
+  { key: 'roam', label: '漫游' },
 ];
 
 const PANEL_META = {
   components: {
-    title: '构件面板',
-    description: '继续从构件库向场景中新增对象，并通过图纸参考更快搭出规整轮廓。',
-  },
-  templates: {
-    title: '模板面板',
-    description: '使用门楼、亭阁、殿阁模板快速起步，再在现有场景基础上继续微调。',
+    title: '构件',
+    description: '添加构件，或直接套用模板开始搭建。',
   },
   blueprint: {
-    title: '图纸面板',
-    description: '切换平面辅助 / 结构辅助模式，并按推荐步骤完成古建筑搭建。',
-  },
-  weather: {
-    title: '天气面板',
-    description: '通过背景、雾和环境明暗切换场景气氛，保持沉浸式网页感。',
+    title: '图纸',
+    description: '按中轴与步骤提示，安静地完成结构布局。',
   },
   lighting: {
-    title: '光影面板',
-    description: '切换不同时段光照，让结构体块与空间层次更加清楚。',
+    title: '光影',
+    description: '切换天气与时段，让场景氛围更贴近展示状态。',
   },
   properties: {
-    title: '属性与对象',
-    description: '编辑当前对象或批量操作选中对象，并在对象列表中管理场景图层。',
+    title: '属性',
+    description: '对象编辑、更多操作与反馈都收在这里。',
   },
 };
 
 const DEFAULT_STATE = {
   activeNav: 'components',
   isRailHidden: false,
-  isPanelOpen: true,
-  currentWeather: 'sunny',
-  currentLighting: 'noon',
+  isPanelOpen: false,
+  currentWeather: 'dusk',
+  currentLighting: 'sunset',
   currentView: 'perspective',
   showBlueprintOverlay: false,
   blueprintMode: 'plan',
-  focusType: 'column',
+  focusType: 'roof',
   selectedObjectIds: [],
-  sceneObjects: [],
-  showSteps: true,
-  currentTemplate: null,
+  showSteps: false,
+  currentTemplate: DEFAULT_TEMPLATE_KEY,
 };
 
 const templateDefinitions = getTemplateDefinitions();
@@ -150,10 +121,10 @@ export default function App() {
   const [blueprintMode, setBlueprintMode] = useState(DEFAULT_STATE.blueprintMode);
   const [focusType, setFocusType] = useState(DEFAULT_STATE.focusType);
   const [selectedObjectIds, setSelectedObjectIds] = useState(DEFAULT_STATE.selectedObjectIds);
-  const [sceneObjects, setSceneObjects] = useState(DEFAULT_STATE.sceneObjects);
+  const [sceneObjects, setSceneObjects] = useState(() => createTemplateScene(DEFAULT_TEMPLATE_KEY));
   const [showSteps, setShowSteps] = useState(DEFAULT_STATE.showSteps);
   const [currentTemplate, setCurrentTemplate] = useState(DEFAULT_STATE.currentTemplate);
-  const [statusMessage, setStatusMessage] = useState('已就绪');
+  const [statusMessage, setStatusMessage] = useState('点击左侧展开功能');
   const [historyStack, setHistoryStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
   const statusTimerRef = useRef(null);
@@ -171,14 +142,6 @@ export default function App() {
     () => getCurrentStep(sceneObjects, primarySelectedObject?.type ?? focusType),
     [focusType, primarySelectedObject?.type, sceneObjects],
   );
-
-  const stats = useMemo(() => {
-    return [
-      { label: '结构完整度', value: `${evaluationSummary.completeness}%` },
-      { label: '美观评分', value: evaluationSummary.beautyScore },
-      { label: '匠心值', value: `+${evaluationSummary.craftsmanship}` },
-    ];
-  }, [evaluationSummary]);
 
   const currentFocusLabel = useMemo(() => {
     if (selectedObjectIds.length > 1) {
@@ -206,10 +169,10 @@ export default function App() {
     setCurrentView(payload.currentView ?? DEFAULT_STATE.currentView);
     setShowBlueprintOverlay(payload.showBlueprintOverlay ?? DEFAULT_STATE.showBlueprintOverlay);
     setBlueprintMode(payload.blueprintMode ?? DEFAULT_STATE.blueprintMode);
-    setSceneObjects(payload.sceneObjects ?? DEFAULT_STATE.sceneObjects);
+    setSceneObjects(payload.sceneObjects ?? createTemplateScene(DEFAULT_TEMPLATE_KEY));
     setSelectedObjectIds(payload.selectedObjectIds ?? []);
     setShowSteps(payload.showSteps ?? DEFAULT_STATE.showSteps);
-    setCurrentTemplate(payload.currentTemplate ?? null);
+    setCurrentTemplate(payload.currentTemplate ?? DEFAULT_STATE.currentTemplate);
     setFocusType(payload.focusType ?? DEFAULT_STATE.focusType);
   }, []);
 
@@ -248,7 +211,7 @@ export default function App() {
     setStatusMessage(message);
     window.clearTimeout(statusTimerRef.current);
     statusTimerRef.current = window.setTimeout(() => {
-      setStatusMessage('已就绪');
+      setStatusMessage('点击左侧展开功能');
     }, 2200);
   }, []);
 
@@ -262,7 +225,7 @@ export default function App() {
 
     if (savedState) {
       applyPersistedState(savedState);
-      setStatusMessage('已自动恢复上次方案');
+      setStatusMessage('已恢复上次场景');
     }
 
     return () => {
@@ -325,7 +288,6 @@ export default function App() {
 
   const handleReopenRail = useCallback(() => {
     setIsRailHidden(false);
-    setIsPanelOpen(true);
   }, []);
 
   const handleClearSelection = useCallback(() => {
@@ -366,7 +328,7 @@ export default function App() {
     setSceneObjects((previousObjects) => [...previousObjects, nextObject]);
     setSelectedObjectIds([nextObject.id]);
     setFocusType(item.objectType);
-    setTransientStatus(`已添加 ${item.label}`);
+    setTransientStatus(`已添加${item.label}`);
   }, [recordHistory, sceneObjects, setTransientStatus]);
 
   const handleApplyTemplate = useCallback((templateKey) => {
@@ -376,26 +338,20 @@ export default function App() {
     setSceneObjects(templateObjects);
     setSelectedObjectIds([]);
     setCurrentTemplate(templateKey);
-    setShowBlueprintOverlay(true);
+    setShowBlueprintOverlay(false);
     setBlueprintMode('plan');
-    setFocusType('platform');
-    setActiveNav('properties');
-    setTransientStatus(`已套用模板：${templateLabelMap[templateKey]}`);
+    setFocusType('roof');
+    setTransientStatus(`已套用${templateLabelMap[templateKey]}`);
   }, [recordHistory, setTransientStatus]);
 
   const handleClearScene = useCallback(() => {
-    if (!sceneObjects.length) {
-      setTransientStatus('当前已经是空白场景');
-      return;
-    }
-
     recordHistory();
     setSceneObjects([]);
     setSelectedObjectIds([]);
     setCurrentTemplate(null);
     setFocusType(DEFAULT_STATE.focusType);
     setTransientStatus('已清空场景');
-  }, [recordHistory, sceneObjects.length, setTransientStatus]);
+  }, [recordHistory, setTransientStatus]);
 
   const handlePositionChange = useCallback((axis, value, isBatch = false) => {
     if (!selectedObjectIds.length) {
@@ -505,7 +461,7 @@ export default function App() {
     setSceneObjects((previousObjects) => [...previousObjects, duplicatedObject]);
     setSelectedObjectIds([duplicatedObject.id]);
     setFocusType(targetObject.type);
-    setTransientStatus('已复制当前对象');
+    setTransientStatus('已复制对象');
   }, [recordHistory, sceneObjects, setTransientStatus]);
 
   const handleToggleVisibility = useCallback((objectIds = selectedObjectIds) => {
@@ -514,9 +470,7 @@ export default function App() {
     }
 
     const targetIds = new Set(objectIds);
-    const shouldShow = sceneObjects.some(
-      (object) => targetIds.has(object.id) && !object.visible,
-    );
+    const shouldShow = sceneObjects.some((object) => targetIds.has(object.id) && !object.visible);
 
     recordHistory();
     setSceneObjects((previousObjects) =>
@@ -540,6 +494,7 @@ export default function App() {
     }
 
     const targetIds = new Set(objectIds);
+
     recordHistory();
     setSceneObjects((previousObjects) =>
       previousObjects.filter((object) => !targetIds.has(object.id)),
@@ -547,7 +502,7 @@ export default function App() {
     setSelectedObjectIds((previousSelected) =>
       previousSelected.filter((objectId) => !targetIds.has(objectId)),
     );
-    setTransientStatus(objectIds.length > 1 ? '已删除选中对象' : '对象已删除');
+    setTransientStatus(objectIds.length > 1 ? '已删除选中对象' : '已删除对象');
   }, [recordHistory, selectedObjectIds, setTransientStatus]);
 
   const handleMirrorObject = useCallback((objectId) => {
@@ -562,7 +517,7 @@ export default function App() {
     setSceneObjects((previousObjects) => [...previousObjects, mirroredObject]);
     setSelectedObjectIds([mirroredObject.id]);
     setFocusType(targetObject.type);
-    setTransientStatus('已沿 X 轴镜像复制');
+    setTransientStatus('已沿中轴镜像复制');
   }, [recordHistory, sceneObjects, setTransientStatus]);
 
   const handleArrayCopy = useCallback((objectId, count, spacing) => {
@@ -582,7 +537,7 @@ export default function App() {
     setSceneObjects((previousObjects) => [...previousObjects, ...arrayObjects]);
     setSelectedObjectIds(arrayObjects.map((object) => object.id));
     setFocusType(targetObject.type);
-    setTransientStatus(`已生成 ${count} 列阵列`);
+    setTransientStatus('已生成阵列复制');
   }, [recordHistory, sceneObjects, setTransientStatus]);
 
   const handleUndo = useCallback(() => {
@@ -652,30 +607,21 @@ export default function App() {
 
   const handleSaveScheme = useCallback(() => {
     const saveSucceeded = saveBuilderState(buildPersistedPayload());
-    setTransientStatus(saveSucceeded ? '方案已保存到本地' : '保存失败');
+    setTransientStatus(saveSucceeded ? '已保存到本地' : '保存失败');
   }, [buildPersistedPayload, setTransientStatus]);
 
   const handleLoadScheme = useCallback(() => {
     const savedState = loadBuilderState();
 
     if (!savedState) {
-      setTransientStatus('没有找到可读取的本地方案');
+      setTransientStatus('没有找到本地方案');
       return;
     }
 
-    if (sceneObjects.length || selectedObjectIds.length) {
-      recordHistory();
-    }
-
+    recordHistory();
     applyPersistedState(savedState);
     setTransientStatus('已读取本地方案');
-  }, [
-    applyPersistedState,
-    recordHistory,
-    sceneObjects.length,
-    selectedObjectIds.length,
-    setTransientStatus,
-  ]);
+  }, [applyPersistedState, recordHistory, setTransientStatus]);
 
   const handleExportJson = useCallback(() => {
     exportSceneJson(buildPersistedPayload());
@@ -695,29 +641,19 @@ export default function App() {
 
     try {
       const importedScene = await readJsonFile(file);
-
-      if (sceneObjects.length || selectedObjectIds.length) {
-        recordHistory();
-      }
-
+      recordHistory();
       applyPersistedState({
         ...DEFAULT_STATE,
         ...importedScene,
       });
-      setTransientStatus('已导入 JSON 方案');
+      setTransientStatus('已导入方案');
     } catch (error) {
       console.error(error);
-      setTransientStatus('导入失败，请检查 JSON 文件格式');
+      setTransientStatus('导入失败，请检查文件格式');
     } finally {
       event.target.value = '';
     }
-  }, [
-    applyPersistedState,
-    recordHistory,
-    sceneObjects.length,
-    selectedObjectIds.length,
-    setTransientStatus,
-  ]);
+  }, [applyPersistedState, recordHistory, setTransientStatus]);
 
   const handleExportScreenshot = useCallback(() => {
     const success = exportCanvasScreenshot();
@@ -730,20 +666,11 @@ export default function App() {
         return (
           <ComponentsPanel
             focusedType={focusType}
+            currentTemplate={currentTemplate}
             sceneObjectCount={sceneObjects.length}
             onAddComponent={handleAddComponent}
-            onOpenTemplates={() => setActiveNav('templates')}
-          />
-        );
-      case 'templates':
-        return (
-          <TemplatesPanel
-            currentTemplate={currentTemplate}
             onApplyTemplate={handleApplyTemplate}
             onClearScene={handleClearScene}
-            onExportJson={handleExportJson}
-            onImportJson={handleImportJson}
-            onExportScreenshot={handleExportScreenshot}
           />
         );
       case 'blueprint':
@@ -753,23 +680,18 @@ export default function App() {
             showBlueprintOverlay={showBlueprintOverlay}
             blueprintMode={blueprintMode}
             currentStep={currentStep}
-            focusType={focusType}
+            focusType={primarySelectedObject?.type ?? focusType}
             onToggleSteps={() => setShowSteps((previous) => !previous)}
             onToggleBlueprintOverlay={() => setShowBlueprintOverlay((previous) => !previous)}
             onChangeBlueprintMode={setBlueprintMode}
           />
         );
-      case 'weather':
-        return (
-          <WeatherPanel
-            currentWeather={currentWeather}
-            onSelectWeather={setCurrentWeather}
-          />
-        );
       case 'lighting':
         return (
           <LightingPanel
+            currentWeather={currentWeather}
             currentLighting={currentLighting}
+            onSelectWeather={setCurrentWeather}
             onSelectLighting={setCurrentLighting}
           />
         );
@@ -779,6 +701,9 @@ export default function App() {
             selectedObjects={selectedObjects}
             selectedObjectIds={selectedObjectIds}
             sceneObjects={sceneObjects}
+            evaluationSummary={evaluationSummary}
+            canUndo={historyStack.length > 0}
+            canRedo={redoStack.length > 0}
             onSelectObject={handleSelectObject}
             onPositionChange={handlePositionChange}
             onRotationChange={handleRotationChange}
@@ -788,6 +713,13 @@ export default function App() {
             onDeleteObject={handleDeleteObject}
             onMirrorObject={handleMirrorObject}
             onArrayCopy={handleArrayCopy}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            onSaveScheme={handleSaveScheme}
+            onLoadScheme={handleLoadScheme}
+            onExportJson={handleExportJson}
+            onImportJson={handleImportJson}
+            onExportScreenshot={handleExportScreenshot}
           />
         );
       default:
@@ -800,21 +732,30 @@ export default function App() {
     currentStep,
     currentTemplate,
     currentWeather,
+    evaluationSummary,
     focusType,
     handleAddComponent,
     handleApplyTemplate,
     handleArrayCopy,
+    handleClearScene,
     handleDeleteObject,
     handleDuplicateObject,
     handleExportJson,
     handleExportScreenshot,
     handleImportJson,
+    handleLoadScheme,
     handleMirrorObject,
     handlePositionChange,
+    handleRedo,
     handleRotationChange,
+    handleSaveScheme,
     handleScaleChange,
     handleSelectObject,
     handleToggleVisibility,
+    handleUndo,
+    historyStack.length,
+    primarySelectedObject?.type,
+    redoStack.length,
     sceneObjects,
     selectedObjectIds,
     selectedObjects,
@@ -832,10 +773,8 @@ export default function App() {
         onChange={handleImportFileChange}
       />
 
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(231,182,101,0.18),transparent_24%),linear-gradient(180deg,#2b211c_0%,#140f0d_58%,#090706_100%)]" />
-      <div className="absolute inset-0 bg-scene-grid bg-[size:52px_52px] opacity-[0.14]" />
-      <div className="absolute left-0 top-0 h-80 w-80 rounded-full bg-amber-200/10 blur-3xl" />
-      <div className="absolute bottom-0 right-0 h-[30rem] w-[30rem] rounded-full bg-orange-600/10 blur-3xl" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(229,176,95,0.16),transparent_26%),linear-gradient(180deg,#241a16_0%,#120f0d_60%,#090706_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_15%,rgba(247,211,157,0.08),transparent_24%),radial-gradient(circle_at_50%_85%,rgba(102,66,33,0.14),transparent_34%)]" />
 
       <BuilderScene
         currentWeather={currentWeather}
@@ -851,30 +790,7 @@ export default function App() {
       />
 
       <div className="pointer-events-none absolute inset-0 z-20">
-        <TopOverlay
-          isRailHidden={isRailHidden}
-          currentWeather={WEATHER_OPTIONS[currentWeather].label}
-          currentLighting={LIGHTING_OPTIONS[currentLighting].label}
-          currentFocus={currentFocusLabel}
-          sceneObjectCount={sceneObjects.length}
-          selectedCount={selectedObjectIds.length}
-          statusMessage={statusMessage}
-          canUndo={historyStack.length > 0}
-          canRedo={redoStack.length > 0}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
-          onSaveScheme={handleSaveScheme}
-          onLoadScheme={handleLoadScheme}
-          onExportJson={handleExportJson}
-          onImportJson={handleImportJson}
-          onExportScreenshot={handleExportScreenshot}
-        />
-
-        <FloatingStats stats={stats} isRailHidden={isRailHidden} />
-        <EvaluationBadge
-          isRailHidden={isRailHidden}
-          evaluationSummary={evaluationSummary}
-        />
+        <TopOverlay isRailHidden={isRailHidden} />
 
         <div className="absolute inset-y-0 left-0 flex pointer-events-none">
           {!isRailHidden && (
@@ -916,85 +832,8 @@ export default function App() {
         </div>
 
         {sceneObjects.length === 0 && (
-          <div className="pointer-events-auto absolute left-1/2 top-1/2 w-[min(460px,calc(100vw-3rem))] -translate-x-1/2 -translate-y-1/2 rounded-[28px] border border-amber-300/20 bg-black/35 px-6 py-5 text-center shadow-glow backdrop-blur-xl">
-            <p className="panel-heading">快速开始</p>
-            <h2 className="mt-2 font-display text-2xl text-white">从构件库添加，或直接套用模板开始搭建</h2>
-            <p className="mt-2 text-sm leading-6 text-stone-300">
-              当前场景为空。你可以从左侧添加单个构件，也可以一键生成四柱亭或单檐殿阁模板。
-            </p>
-            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <button
-                type="button"
-                onClick={() => setActiveNav('components')}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-stone-200 transition hover:bg-white/10"
-              >
-                打开构件库
-              </button>
-              <button
-                type="button"
-                onClick={() => handleApplyTemplate('pavilion')}
-                className="rounded-2xl border border-amber-300/25 bg-amber-200/10 px-4 py-3 text-sm text-amber-100 transition hover:bg-amber-200/20"
-              >
-                生成四柱亭
-              </button>
-              <button
-                type="button"
-                onClick={() => handleApplyTemplate('hall')}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-stone-200 transition hover:bg-white/10"
-              >
-                生成单檐殿阁
-              </button>
-            </div>
-          </div>
-        )}
-
-        {showSteps && (
-          <div className="pointer-events-auto absolute bottom-6 right-6 w-[min(360px,calc(100vw-2rem))] rounded-[28px] border border-white/10 bg-black/40 p-4 shadow-glow backdrop-blur-xl">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <p className="panel-heading">搭建步骤</p>
-                <h2 className="mt-2 font-display text-xl text-white">右下角施工引导</h2>
-                <p className="mt-1 text-sm text-stone-300">
-                  当前建议先完成第 {currentStep} 步，按顺序搭建能更快形成规整轮廓。
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowSteps(false)}
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-stone-300 transition hover:bg-white/10"
-              >
-                隐藏
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              {blueprintSteps.map((step, index) => {
-                const stepNumber = index + 1;
-                const isActive = stepNumber === currentStep;
-
-                return (
-                  <div
-                    key={step}
-                    className={`flex gap-3 rounded-2xl border px-3 py-3 text-sm ${
-                      isActive
-                        ? 'border-amber-300/30 bg-amber-200/10 text-white'
-                        : 'border-white/8 bg-white/5 text-stone-200'
-                    }`}
-                  >
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-300 text-xs font-semibold text-stone-950">
-                      {stepNumber}
-                    </div>
-                    <p>{step}</p>
-                  </div>
-                );
-              })}
-            </div>
-
-            {primarySelectedObject && (
-              <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-stone-300">
-                当前对象位置：x {formatNumber(primarySelectedObject.position[0])} / y {formatNumber(primarySelectedObject.position[1])} / z {formatNumber(primarySelectedObject.position[2])}
-              </div>
-            )}
+          <div className="pointer-events-auto absolute bottom-24 left-1/2 w-[min(320px,calc(100vw-2rem))] -translate-x-1/2 rounded-full border border-white/10 bg-black/25 px-5 py-3 text-center text-sm text-stone-300 backdrop-blur-xl">
+            从左侧构件库添加建筑构件，或套用一个模板重新开始。
           </div>
         )}
       </div>

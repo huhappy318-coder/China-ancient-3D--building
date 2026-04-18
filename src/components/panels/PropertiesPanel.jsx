@@ -6,6 +6,9 @@ export default function PropertiesPanel({
   selectedObjects,
   selectedObjectIds,
   sceneObjects,
+  evaluationSummary,
+  canUndo,
+  canRedo,
   onSelectObject,
   onPositionChange,
   onRotationChange,
@@ -15,6 +18,13 @@ export default function PropertiesPanel({
   onDeleteObject,
   onMirrorObject,
   onArrayCopy,
+  onUndo,
+  onRedo,
+  onSaveScheme,
+  onLoadScheme,
+  onExportJson,
+  onImportJson,
+  onExportScreenshot,
 }) {
   const [arrayCount, setArrayCount] = useState(5);
   const [arraySpacing, setArraySpacing] = useState(1.5);
@@ -44,27 +54,24 @@ export default function PropertiesPanel({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-[28px] border border-white/10 bg-white/5 p-4">
-        <p className="panel-heading">当前对象</p>
-        <h3 className="mt-2 text-xl font-semibold text-white">
+      <PanelBlock title="对象">
+        <h3 className="panel-title mt-0">
           {selectedObjects.length === 0
             ? '未选择对象'
             : isMultiSelect
               ? `已选中 ${selectedObjects.length} 个对象`
               : primarySelectedObject.meta.label}
         </h3>
-        <p className="mt-2 text-sm leading-6 text-stone-300">
-          单选时可精确编辑对象；多选时进入批量编辑模式，支持统一移动、缩放、显隐与删除。
+        <p className="panel-copy">
+          编辑、反馈和导出都收在这里，主场景保持干净，操作按需要再展开。
         </p>
-      </div>
+      </PanelBlock>
 
       {selectedObjects.length === 0 ? (
-        <div className="rounded-[28px] border border-dashed border-white/10 bg-black/15 px-4 py-6 text-sm text-stone-400">
-          点击场景中的构件，或在对象列表中按住 Shift 连点多个对象，即可进入编辑状态。
-        </div>
+        <PanelHint text="先点击场景中的对象，或在对象列表里按住 Shift 连续选择多个对象。" />
       ) : isMultiSelect ? (
         <>
-          <div className="rounded-[28px] border border-white/10 bg-white/5 p-4">
+          <PanelBlock title="批量编辑">
             <div className="grid grid-cols-2 gap-3 text-sm text-stone-300">
               <MetaLine label="模式" value="批量编辑" />
               <MetaLine label="对象数" value={`${selectedObjects.length}`} />
@@ -73,7 +80,7 @@ export default function PropertiesPanel({
               <MetaLine label="平均缩放" value={`${formatNumber(selectionSummary.averageScale)}x`} />
               <MetaLine label="可见状态" value={selectionSummary.allVisible ? '全部显示' : '部分隐藏'} />
             </div>
-          </div>
+          </PanelBlock>
 
           <SliderField
             label="批量移动 X"
@@ -105,26 +112,28 @@ export default function PropertiesPanel({
             onChange={(value) => onScaleChange(value, true)}
           />
 
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => onToggleVisibility(selectedObjectIds)}
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-stone-200 transition hover:bg-white/10"
-            >
+          <ActionRow>
+            <ActionButton onClick={() => onToggleVisibility(selectedObjectIds)}>
               {selectionSummary.allVisible ? '批量隐藏' : '批量显示'}
-            </button>
-            <button
-              type="button"
-              onClick={() => onDeleteObject(selectedObjectIds)}
-              className="rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-100 transition hover:bg-red-400/20"
-            >
-              批量删除
-            </button>
-          </div>
+            </ActionButton>
+            <DangerButton onClick={() => onDeleteObject(selectedObjectIds)}>批量删除</DangerButton>
+          </ActionRow>
         </>
       ) : (
         <>
-          <ObjectMetaCard selectedObject={primarySelectedObject} />
+          <PanelBlock title="当前信息">
+            <div className="grid grid-cols-2 gap-3 text-sm text-stone-300">
+              <MetaLine label="ID" value={primarySelectedObject.id} />
+              <MetaLine label="类型" value={primarySelectedObject.meta.label} />
+              <MetaLine label="可见" value={primarySelectedObject.visible ? '是' : '否'} />
+              <MetaLine label="旋转" value={`${formatNumber(primarySelectedObject.rotation[1])}°`} />
+              <MetaLine
+                label="位置"
+                value={`x ${formatNumber(primarySelectedObject.position[0])} / y ${formatNumber(primarySelectedObject.position[1])} / z ${formatNumber(primarySelectedObject.position[2])}`}
+              />
+              <MetaLine label="缩放" value={`${formatNumber(primarySelectedObject.scale[0])}x`} />
+            </div>
+          </PanelBlock>
 
           <SliderField
             label="X 方向位置"
@@ -176,46 +185,28 @@ export default function PropertiesPanel({
             onChange={(value) => onScaleChange(value, false)}
           />
 
-          <div className="grid grid-cols-3 gap-3">
-            <button
-              type="button"
-              onClick={() => onDuplicateObject(primarySelectedObject.id)}
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-stone-200 transition hover:bg-white/10"
-            >
-              复制
-            </button>
-            <button
-              type="button"
-              onClick={() => onToggleVisibility([primarySelectedObject.id])}
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-stone-200 transition hover:bg-white/10"
-            >
+          <ActionRow>
+            <ActionButton onClick={() => onDuplicateObject(primarySelectedObject.id)}>复制</ActionButton>
+            <ActionButton onClick={() => onToggleVisibility([primarySelectedObject.id])}>
               {primarySelectedObject.visible ? '隐藏' : '显示'}
-            </button>
-            <button
-              type="button"
-              onClick={() => onDeleteObject([primarySelectedObject.id])}
-              className="rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-100 transition hover:bg-red-400/20"
-            >
-              删除
-            </button>
-          </div>
+            </ActionButton>
+            <DangerButton onClick={() => onDeleteObject([primarySelectedObject.id])}>删除</DangerButton>
+          </ActionRow>
 
-          <div className="rounded-[28px] border border-white/10 bg-white/5 p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
+          <PanelBlock title="对称 / 阵列">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="panel-heading">对称 / 阵列</p>
-                <h3 className="mt-2 text-lg font-semibold text-white">规则感辅助</h3>
+                <h3 className="panel-title mt-0">规则辅助</h3>
+                <p className="panel-copy">
+                  适合做中轴镜像和立柱阵列，帮助快速搭出更有秩序感的轮廓。
+                </p>
               </div>
-              <button
-                type="button"
-                onClick={() => onMirrorObject(primarySelectedObject.id)}
-                className="rounded-2xl border border-amber-300/25 bg-amber-200/10 px-4 py-3 text-sm text-amber-100 transition hover:bg-amber-200/20"
-              >
-                沿 X 轴镜像复制
-              </button>
+              <ActionButton onClick={() => onMirrorObject(primarySelectedObject.id)}>
+                沿 X 轴镜像
+              </ActionButton>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="mt-4 grid grid-cols-2 gap-3">
               <SelectField
                 label="阵列数量"
                 value={arrayCount}
@@ -230,16 +221,45 @@ export default function PropertiesPanel({
               />
             </div>
 
-            <button
-              type="button"
+            <ActionButton
+              className="mt-3 w-full"
               onClick={() => onArrayCopy(primarySelectedObject.id, arrayCount, arraySpacing)}
-              className="mt-3 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-stone-200 transition hover:bg-white/10"
             >
               生成阵列复制
-            </button>
-          </div>
+            </ActionButton>
+          </PanelBlock>
         </>
       )}
+
+      <PanelBlock title="反馈">
+        <div className="grid grid-cols-3 gap-3">
+          <MetaLine label="完整度" value={`${evaluationSummary.completeness}%`} />
+          <MetaLine label="美观评分" value={evaluationSummary.beautyScore} />
+          <MetaLine label="匠心值" value={`+${evaluationSummary.craftsmanship}`} />
+        </div>
+        <div className="mt-3 space-y-2">
+          {evaluationSummary.suggestions.map((suggestion) => (
+            <div
+              key={suggestion}
+              className="rounded-[18px] border border-white/8 bg-black/20 px-3 py-3 text-[13px] leading-6 text-stone-300"
+            >
+              {suggestion}
+            </div>
+          ))}
+        </div>
+      </PanelBlock>
+
+      <PanelBlock title="更多操作">
+        <div className="grid grid-cols-2 gap-3">
+          <ActionButton onClick={onUndo} disabled={!canUndo}>撤销</ActionButton>
+          <ActionButton onClick={onRedo} disabled={!canRedo}>重做</ActionButton>
+          <ActionButton onClick={onSaveScheme}>保存方案</ActionButton>
+          <ActionButton onClick={onLoadScheme}>读取方案</ActionButton>
+          <ActionButton onClick={onExportJson}>导出 JSON</ActionButton>
+          <ActionButton onClick={onImportJson}>导入 JSON</ActionButton>
+          <ActionButton className="col-span-2" onClick={onExportScreenshot}>导出截图</ActionButton>
+        </div>
+      </PanelBlock>
 
       <ObjectListPanel
         sceneObjects={sceneObjects}
@@ -252,28 +272,56 @@ export default function PropertiesPanel({
   );
 }
 
-function ObjectMetaCard({ selectedObject }) {
+function PanelBlock({ title, children }) {
   return (
-    <div className="rounded-[28px] border border-white/10 bg-white/5 p-4">
-      <div className="grid grid-cols-2 gap-3 text-sm text-stone-300">
-        <MetaLine label="ID" value={selectedObject.id} />
-        <MetaLine label="类型" value={selectedObject.meta.label} />
-        <MetaLine label="可见" value={selectedObject.visible ? '是' : '否'} />
-        <MetaLine label="旋转" value={`${formatNumber(selectedObject.rotation[1])}°`} />
-        <MetaLine
-          label="位置"
-          value={`x ${formatNumber(selectedObject.position[0])} / y ${formatNumber(selectedObject.position[1])} / z ${formatNumber(selectedObject.position[2])}`}
-        />
-        <MetaLine label="缩放" value={`${formatNumber(selectedObject.scale[0])}x`} />
-      </div>
+    <div className="panel-shell">
+      <p className="panel-heading">{title}</p>
+      <div className="mt-3">{children}</div>
     </div>
+  );
+}
+
+function PanelHint({ text }) {
+  return (
+    <div className="rounded-[22px] border border-dashed border-white/10 bg-black/15 px-4 py-6 text-[13px] leading-6 text-stone-400">
+      {text}
+    </div>
+  );
+}
+
+function ActionRow({ children }) {
+  return <div className="grid grid-cols-3 gap-3">{children}</div>;
+}
+
+function ActionButton({ children, onClick, disabled = false, className = '' }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`panel-button disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function DangerButton({ children, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-[18px] border border-red-400/25 bg-red-400/10 px-4 py-3 text-sm text-red-100 transition hover:bg-red-400/18"
+    >
+      {children}
+    </button>
   );
 }
 
 function MetaLine({ label, value }) {
   return (
-    <div className="rounded-2xl border border-white/8 bg-black/20 px-3 py-3">
-      <div className="text-xs text-stone-400">{label}</div>
+    <div className="rounded-[18px] border border-white/8 bg-black/20 px-3 py-3">
+      <div className="text-[11px] text-stone-500">{label}</div>
       <div className="mt-1 text-sm text-white">{value}</div>
     </div>
   );
@@ -281,8 +329,8 @@ function MetaLine({ label, value }) {
 
 function SliderField({ label, value, min, max, step, display, onChange }) {
   return (
-    <div className="rounded-[28px] border border-white/10 bg-white/5 p-4">
-      <div className="mb-3 flex items-center justify-between">
+    <div className="panel-shell">
+      <div className="mb-3 flex items-center justify-between gap-3">
         <span className="text-sm text-stone-200">{label}</span>
         <span className="text-sm text-amber-100">{display}</span>
       </div>
@@ -301,8 +349,8 @@ function SliderField({ label, value, min, max, step, display, onChange }) {
 
 function SelectField({ label, value, options, onChange }) {
   return (
-    <label className="rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-sm text-stone-200">
-      <div className="mb-2 text-xs text-stone-400">{label}</div>
+    <label className="rounded-[18px] border border-white/8 bg-black/20 px-3 py-3 text-sm text-stone-200">
+      <div className="mb-2 text-[11px] text-stone-500">{label}</div>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
