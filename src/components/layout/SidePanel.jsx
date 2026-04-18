@@ -1,7 +1,7 @@
 export default function SidePanel({ isOpen, title, description, onClose, children }) {
   return (
     <aside
-      className={`h-full w-[308px] border-r border-white/8 bg-black/24 shadow-glow backdrop-blur-xl transition-all duration-300 ${
+      className={`h-full w-[304px] border-r border-white/8 bg-black/24 backdrop-blur-xl transition-all duration-300 ${
         isOpen ? 'translate-x-0 opacity-100' : 'pointer-events-none -translate-x-8 opacity-0'
       }`}
     >
